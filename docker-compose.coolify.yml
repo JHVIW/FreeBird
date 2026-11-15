@@ -1,0 +1,84 @@
+# Compose-bestand voor Coolify (build pack "Docker Compose").
+# Coolify's eigen proxy regelt HTTPS, dus geen Caddy en geen poorten naar de host.
+# Domein instellen in Coolify bij service "web": https://boekhouding.jouwbedrijf.nl:3000
+# SERVICE_PASSWORD_POSTGRES en SERVICE_PASSWORD_64_SESSION genereert Coolify zelf.
+# Zelf invullen: APP_URL, ADMIN_PASSWORD_HASH_B64, APP_ENCRYPTION_KEY (zie README).
+
+x-app-env: &app-env
+  DATABASE_URL: postgres://freebird:${SERVICE_PASSWORD_POSTGRES}@db:5432/freebird
+  DATA_DIR: /data
+  APP_URL: ${APP_URL:?}
+  ADMIN_PASSWORD_HASH_B64: ${ADMIN_PASSWORD_HASH_B64:?}
+  SESSION_SECRET: ${SERVICE_PASSWORD_64_SESSION}
+  APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?}
+  DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+  DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-flash}
+  AGENT_API_TOKEN: ${AGENT_API_TOKEN:-}
+  BUNQ_ENV: ${BUNQ_ENV:-production}
+  BUNQ_CALLBACK_IP_CHECK: ${BUNQ_CALLBACK_IP_CHECK:-true}
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: freebird
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+      POSTGRES_DB: freebird
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U freebird"]
+      interval: 5s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    environment: *app-env
+    volumes:
+      - files:/data
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  worker:
+    build: .
+    restart: unless-stopped
+    environment: *app-env
+    volumes:
+      - files:/data
+    command: ["npm", "run", "worker"]
+    depends_on:
+      web: { condition: service_healthy }
+
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+    volumes:
+      - backups:/backups
+      - files:/data:ro
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        while true; do
+          d=$$(date +%F)
+          pg_dump -h db -U freebird -Fc freebird > /backups/freebird-$$d.dump
+          tar czf /backups/bestanden-$$d.tgz -C /data .
+          find /backups -mtime +30 -delete
+          sleep 86400
+        done
+    depends_on:
+      db: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  files:
+  backups:

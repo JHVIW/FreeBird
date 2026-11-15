@@ -1,0 +1,10 @@
+# Vervang door je eigen (sub)domein; Caddy regelt het HTTPS-certificaat.
+boekhouding.jouwbedrijf.nl {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "same-origin"
+	}
+	reverse_proxy web:3000
+}

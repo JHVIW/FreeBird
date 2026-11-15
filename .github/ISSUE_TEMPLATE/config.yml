@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Beveiligingsprobleem
+    url: https://github.com/JHVIW/FreeBird/security/advisories/new
+    about: Meld kwetsbaarheden privé, niet in een openbaar issue.

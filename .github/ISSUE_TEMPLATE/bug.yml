@@ -1,0 +1,30 @@
+name: Bug melden
+description: Iets werkt niet zoals het zou moeten
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Laat persoonlijke en financiële gegevens weg (namen, IBAN's, bedragen van echte klanten)."
+  - type: textarea
+    id: wat
+    attributes:
+      label: Wat gebeurde er?
+      description: Beschrijf wat je deed en wat je zag.
+    validations:
+      required: true
+  - type: textarea
+    id: verwacht
+    attributes:
+      label: Wat verwachtte je?
+    validations:
+      required: true
+  - type: textarea
+    id: stappen
+    attributes:
+      label: Hoe kunnen we het nadoen?
+      placeholder: "1. Ga naar Bank\n2. Klik op ...\n3. ..."
+  - type: input
+    id: versie
+    attributes:
+      label: Versie of commit
+      placeholder: bijv. v1.0.0 of de eerste 7 tekens van de commit

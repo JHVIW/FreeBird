@@ -1,0 +1,20 @@
+name: Idee of wens
+description: Stel een nieuwe functie of verbetering voor
+labels: [wens]
+body:
+  - type: textarea
+    id: probleem
+    attributes:
+      label: Welk probleem lost het op?
+      description: Vertel wat je nu lastig vindt of handmatig doet.
+    validations:
+      required: true
+  - type: textarea
+    id: oplossing
+    attributes:
+      label: Hoe zou je het willen?
+  - type: textarea
+    id: bron
+    attributes:
+      label: Fiscale bron (indien van toepassing)
+      description: Link naar de Belastingdienst of wetstekst als het om een regel gaat.

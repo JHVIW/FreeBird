@@ -1,0 +1,74 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: freebird
+      POSTGRES_PASSWORD: freebird
+      POSTGRES_DB: freebird
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U freebird"]
+      interval: 5s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://freebird:freebird@db:5432/freebird
+      DATA_DIR: /data
+    volumes:
+      - files:/data
+    depends_on:
+      db: { condition: service_healthy }
+
+  worker:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://freebird:freebird@db:5432/freebird
+      DATA_DIR: /data
+    volumes:
+      - files:/data
+    command: ["npm", "run", "worker"]
+    depends_on:
+      web: { condition: service_started }
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    depends_on: [web]
+
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: freebird
+    volumes:
+      - ./backups:/backups
+      - files:/data:ro
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        while true; do
+          d=$$(date +%F)
+          pg_dump -h db -U freebird -Fc freebird > /backups/freebird-$$d.dump
+          tar czf /backups/bestanden-$$d.tgz -C /data .
+          find /backups -mtime +30 -delete
+          sleep 86400
+        done
+    depends_on:
+      db: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  files:
+  caddy:
